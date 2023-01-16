@@ -1,0 +1,95 @@
+---
+title: "sports_analytics"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    number_sections: yes
+    toc: yes
+    theme: paper
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# annotation: ctrl + shift + c
+# insert R chunk: ctrl + alt + i
+
+gc()
+rm(list=ls())
+
+
+library(tidyverse)
+library(psych)
+library(mlr)
+library(openxlsx)
+library(GGally)   #Extension to ggplot2
+```
+
+# Data preprocessing
+
+```{r,warning=T,message=T}
+# get data
+df0 = read.csv('cbb.csv', header=T, fileEncoding='UTF-8-BOM')
+df0$pwin = df0$W / df0$G
+#str(df0) #structure
+
+# missing value
+VIM::matrixplot(df0)
+df0 %>% select(-POSTSEASON,-SEED) ->df0
+
+# Descriptive statistics
+df0.des = psych::describe(df0, skew=F); df0.des
+#write.table(df0.des,'describe.csv',row.names=TRUE,col.names=TRUE,sep=",")
+
+```
+
+# Data exploration
+
+```{r}
+# correlation
+col.type = map_chr(df0, typeof); col.type
+tmp = df0[(col.type=='double')|(col.type=='integer')]
+cor1 = round(cor(tmp), 3); cor1
+ggcorrplot::ggcorrplot(cor1)
+
+# correlation for y
+cor.y = cor1[,'pwin']
+cor.y.sort = cor.y[order(abs(cor1[,'pwin']),decreasing=F)]
+tmp = names(cor.y.sort)
+data.frame(correlation=cor.y.sort,
+           variables=factor(tmp, levels=tmp)) %>%
+  ggplot(aes(x=variables,y=correlation))+
+  geom_col()+ coord_flip()+ theme_bw()
+
+```
+
+# linear model
+
+```{r}
+# model building
+lm1 = lm(pwin~., df0[,-c(1:2)])
+summary(lm1)
+
+lm2 = lm(pwin~., df0[,-c(1:2,16:19)])
+summary(lm2)
+
+lm3 = lm(pwin~., df0[,-c(1:4,15:19,21:22)])
+summary(lm3)
+
+# validation
+plot(lm3)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
